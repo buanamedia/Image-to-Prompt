@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Image to Prompt - By Buana Media</title>
   
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -12,33 +13,36 @@
       theme: {
         extend: {
           colors: {
-            darkbg: '#0a0a0a',
-            cardbg: 'rgba(255, 255, 255, 0.03)',
-            bordercolor: 'rgba(125, 125, 125, 0.2)',
-            accent: 'rgba(255, 255, 255, 0.9)',
-            brandblue: '#38bdf8',
+            darkbg: '#080d1a',
+            cardbg: '#0f172a',
+            bordercolor: '#1e293b',
+            accent: '#3b82f6',
+            accenthover: '#2563eb',
+            brandblue: '#60a5fa',
           }
         }
       }
     }
   </script>
 
+  <!-- React & Babel CDN -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #0a0a0a;
-      color: #e5e7eb;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #080d1a;
+      color: #f8fafc;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased text-gray-200 bg-darkbg">
+<body class="min-h-screen flex flex-col antialiased">
 
   <div id="root"></div>
 
@@ -46,7 +50,7 @@
     const { useState, useEffect, useRef } = React;
 
     function App() {
-      // API Keys State
+      // API Keys Multi State
       const [apiKeys, setApiKeys] = useState([]);
       const [newKeyInput, setNewKeyInput] = useState('');
       const [showInputKeyText, setShowInputKeyText] = useState(false);
@@ -60,7 +64,6 @@
       const [preview, setPreview] = useState(null);
       const [ytUrl, setYtUrl] = useState('');
       const [textInput, setTextInput] = useState('');
-      const [isDragging, setIsDragging] = useState(false);
       
       // Custom Settings
       const [aspectRatio, setAspectRatio] = useState('16:9');
@@ -107,26 +110,6 @@
         }
       }, []);
 
-      // Clipboard Paste Listener for Images
-      useEffect(() => {
-        const handlePaste = (e) => {
-          if (inputMode !== 'file') return;
-          const items = e.clipboardData?.items;
-          if (!items) return;
-
-          for (let item of items) {
-            if (item.type.indexOf('image') !== -1) {
-              const pastedFile = item.getAsFile();
-              if (pastedFile) handleFile(pastedFile);
-              break;
-            }
-          }
-        };
-
-        window.addEventListener('paste', handlePaste);
-        return () => window.removeEventListener('paste', handlePaste);
-      }, [inputMode]);
-
       // Add New Key
       const handleAddKey = (e) => {
         e.preventDefault();
@@ -152,16 +135,19 @@
         localStorage.setItem('pv_api_keys', JSON.stringify(updated));
       };
 
+      // Toggle Key Visibility Mask
       const toggleKeyVisibility = (index) => {
         setVisibleKeysMap(prev => ({ ...prev, [index]: !prev[index] }));
       };
 
+      // Copy Single Key
       const copyKeyToClipboard = (keyStr, index) => {
         navigator.clipboard.writeText(keyStr);
         setCopiedKeyIndex(index);
         setTimeout(() => setCopiedKeyIndex(null), 1500);
       };
 
+      // Mask key helper (AQ.Ab8...3DSA)
       const maskKeyStr = (str) => {
         if (!str || str.length < 10) return '••••••••';
         return `${str.substring(0, 6)}...${str.substring(str.length - 4)}`;
@@ -182,23 +168,6 @@
         const reader = new FileReader();
         reader.onloadend = () => setPreview(reader.result);
         reader.readAsDataURL(selectedFile);
-      };
-
-      // Drag & Drop Handlers
-      const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
-      };
-      const handleDragLeave = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-      };
-      const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          handleFile(e.dataTransfer.files[0]);
-        }
       };
 
       // Extract YouTube Thumbnail
@@ -226,7 +195,7 @@
           return;
         }
         if (inputMode === 'youtube' && !preview) {
-          setError('Masukkan URL YouTube lalu klik "Ambil Thumbnail".');
+          setError('Masukkan URL YouTube lalu ambil thumbnail.');
           return;
         }
         if (inputMode === 'text' && !textInput.trim()) {
@@ -271,11 +240,11 @@
           else styleText = ` Target aspect ratio for output image generation is ${aspectRatio}.`;
 
           let systemPrompt = `You are a professional AI prompt engineer. Analyze the visual or context in extreme detail.
-Identify main subject, lighting, mood, color palette, camera angle, atmosphere, composition, and art style.${styleText}
+Identify main subject, lighting, mood, color palette, camera angle, atmosphere, and artistic composition.${styleText}
 
 Requirements:
-- Output ONLY the highly detailed prompt in English.
-- Do not include preamble, intro, or markdown code blocks (no \`\`\` text).`;
+- Output ONLY the highly detailed prompt.
+- Do not include preamble, intro, or markdown wrapper blocks.`;
 
           if (extraInstructions.trim()) systemPrompt += `\nAdditional Custom Instructions: ${extraInstructions.trim()}`;
           if (negativeStyling.trim()) systemPrompt += `\nAvoid/Negative Elements: ${negativeStyling.trim()}`;
@@ -283,10 +252,10 @@ Requirements:
 
           parts.push({ text: systemPrompt });
 
-          // Models fallback priority list (Official Active Models)
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+          // Multi-Key Fallback Engine
           let finalResult = null;
           let lastErrorMessage = '';
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash'];
 
           for (let k = 0; k < apiKeys.length; k++) {
             const currentKey = apiKeys[k];
@@ -320,13 +289,13 @@ Requirements:
           }
 
           if (!finalResult) {
-            throw new Error(lastErrorMessage || 'Seluruh API Key gagal digunakan atau telah mencapai kuota harian.');
+            throw new Error(lastErrorMessage || 'Seluruh API Key gagal digunakan atau rate limited.');
           }
 
-          const trimmedOutput = finalResult.trim().replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '');
+          const trimmedOutput = finalResult.trim();
           setPromptResult(trimmedOutput);
 
-          // Save History
+          // Add to History
           const newHistory = [{ prompt: trimmedOutput, time: new Date().toLocaleTimeString() }, ...history.slice(0, 9)];
           setHistory(newHistory);
           localStorage.setItem('pv_prompt_history', JSON.stringify(newHistory));
@@ -347,9 +316,10 @@ Requirements:
       return (
         <div className="flex flex-col min-h-screen">
           {/* Top Bar Navigation */}
-          <header className="border-b border-bordercolor bg-[#0a0a0a]/90 backdrop-blur px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30">
+          <header className="border-b border-bordercolor bg-cardbg/80 backdrop-blur px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30">
             <div className="flex items-center space-x-3">
-              <div className="bg-brandblue/10 border border-brandblue/30 p-2.5 rounded-xl text-brandblue flex items-center justify-center shadow-sm">
+              {/* Logo Icon */}
+              <div className="bg-accent/10 border border-accent/30 p-2.5 rounded-xl text-accent flex items-center justify-center shadow-sm">
                 <i className="fa-solid fa-wand-magic-sparkles text-xl"></i>
               </div>
               <div>
@@ -361,7 +331,7 @@ Requirements:
                     href="https://www.buanamedia.my.id" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-brandblue hover:underline font-semibold flex items-center gap-1"
+                    className="text-accent hover:text-brandblue font-semibold hover:underline flex items-center gap-1"
                   >
                     <span>By Buana Media</span>
                     <i className="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
@@ -375,9 +345,9 @@ Requirements:
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowApiKeyModal(true)}
-                className="text-xs bg-white/5 hover:bg-white/10 text-gray-200 border border-bordercolor px-3.5 py-2 rounded-xl transition font-semibold flex items-center gap-2"
+                className="text-xs bg-cardbg hover:bg-bordercolor text-gray-200 border border-bordercolor px-3.5 py-2 rounded-xl transition font-semibold flex items-center gap-2"
               >
-                <i className="fa-solid fa-key text-brandblue"></i>
+                <i className="fa-solid fa-key text-accent"></i>
                 <span>{apiKeys.length} Key Tersimpan</span>
               </button>
             </div>
@@ -390,24 +360,24 @@ Requirements:
             <div className="lg:col-span-6 space-y-5">
               
               {/* Tab Mode Input */}
-              <div className="bg-white/5 border border-bordercolor p-1.5 rounded-xl flex space-x-1">
+              <div className="bg-cardbg border border-bordercolor p-1.5 rounded-xl flex space-x-1">
                 <button
                   onClick={() => { setInputMode('file'); setPreview(null); }}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 ${inputMode === 'file' ? 'bg-brandblue/20 text-brandblue border border-brandblue/30 shadow' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 ${inputMode === 'file' ? 'bg-accent text-white shadow' : 'text-gray-400 hover:text-white'}`}
                 >
                   <i className="fa-solid fa-file-image"></i>
                   <span>File</span>
                 </button>
                 <button
                   onClick={() => { setInputMode('youtube'); setPreview(null); }}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 ${inputMode === 'youtube' ? 'bg-brandblue/20 text-brandblue border border-brandblue/30 shadow' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 ${inputMode === 'youtube' ? 'bg-accent text-white shadow' : 'text-gray-400 hover:text-white'}`}
                 >
                   <i className="fa-brands fa-youtube"></i>
                   <span>YouTube</span>
                 </button>
                 <button
                   onClick={() => { setInputMode('text'); setPreview(null); }}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 ${inputMode === 'text' ? 'bg-brandblue/20 text-brandblue border border-brandblue/30 shadow' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 ${inputMode === 'text' ? 'bg-accent text-white shadow' : 'text-gray-400 hover:text-white'}`}
                 >
                   <i className="fa-solid fa-align-left"></i>
                   <span>Teks</span>
@@ -418,24 +388,21 @@ Requirements:
               {apiKeys.length === 0 && (
                 <div 
                   onClick={() => setShowApiKeyModal(true)}
-                  className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200 flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition"
+                  className="bg-accent/10 border border-accent/30 rounded-xl p-3.5 text-xs text-accent flex items-center justify-between cursor-pointer hover:bg-accent/20 transition"
                 >
                   <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-triangle-exclamation text-base text-amber-400"></i>
-                    <span><strong>API Key Belum Dikonfigurasi.</strong> Klik di sini untuk menambahkan key.</span>
+                    <i className="fa-solid fa-circle-exclamation text-base"></i>
+                    <span><strong>API Key Belum Dikonfigurasi.</strong> Klik untuk menambah key.</span>
                   </div>
                   <i className="fa-solid fa-chevron-right"></i>
                 </div>
               )}
 
-              {/* File Upload Area with Drag & Drop */}
+              {/* File Upload */}
               {inputMode === 'file' && (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[220px] ${isDragging ? 'border-brandblue bg-brandblue/10' : 'border-bordercolor hover:border-brandblue/50 bg-white/5'}`}
+                  className="border-2 border-dashed border-bordercolor hover:border-accent/60 bg-cardbg/50 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[200px]"
                 >
                   <input
                     type="file"
@@ -446,22 +413,21 @@ Requirements:
                   />
                   {!preview ? (
                     <div className="space-y-2">
-                      <div className="w-12 h-12 bg-white/10 border border-bordercolor rounded-xl text-brandblue flex items-center justify-center mx-auto text-xl">
+                      <div className="w-12 h-12 bg-accent/10 border border-accent/20 rounded-xl text-accent flex items-center justify-center mx-auto text-xl">
                         <i className="fa-solid fa-cloud-arrow-up"></i>
                       </div>
-                      <p className="text-sm font-semibold text-white">Pilih, Tempel (Ctrl+V), atau Seret File</p>
-                      <p className="text-xs text-gray-400">JPG, PNG, WEBP — Maksimal 20MB</p>
+                      <p className="text-sm font-semibold text-white">Pilih, Tempel, atau Seret File</p>
+                      <p className="text-xs text-gray-400">JPG, PNG, WEBP — Maks 20MB</p>
                     </div>
                   ) : (
                     <div className="relative w-full flex flex-col items-center">
-                      <img src={preview} alt="Preview" className="max-h-52 rounded-lg border border-bordercolor object-contain shadow-md" />
+                      <img src={preview} alt="Preview" className="max-h-48 rounded-lg border border-bordercolor object-contain" />
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setPreview(null); setFile(null); }}
-                        className="mt-3 text-xs bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-500/30 transition flex items-center gap-1.5"
+                        className="mt-3 text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-lg border border-red-500/30 hover:bg-red-500/30 transition"
                       >
-                        <i className="fa-solid fa-trash-can"></i>
-                        <span>Ganti Gambar</span>
+                        Ganti Gambar
                       </button>
                     </div>
                   )}
@@ -470,26 +436,26 @@ Requirements:
 
               {/* YouTube Input */}
               {inputMode === 'youtube' && (
-                <div className="bg-white/5 border border-bordercolor rounded-2xl p-5 space-y-3">
-                  <label className="text-xs font-semibold text-gray-300 block">URL Video YouTube</label>
+                <div className="bg-cardbg border border-bordercolor rounded-2xl p-5 space-y-3">
+                  <label className="text-xs font-semibold text-gray-300">URL Video YouTube</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={ytUrl}
                       onChange={(e) => setYtUrl(e.target.value)}
                       placeholder="https://www.youtube.com/watch?v=..."
-                      className="flex-1 bg-black/50 border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brandblue"
+                      className="flex-1 bg-darkbg border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-accent"
                     />
                     <button
                       onClick={extractYtThumbnail}
-                      className="bg-brandblue/20 hover:bg-brandblue/30 text-brandblue text-xs px-4 py-2.5 rounded-xl font-semibold border border-brandblue/30 transition shrink-0"
+                      className="bg-accent hover:bg-accenthover text-white text-xs px-4 py-2.5 rounded-xl font-semibold transition"
                     >
-                      Ambil Thumbnail
+                      Ambil
                     </button>
                   </div>
                   {preview && (
                     <div className="pt-2">
-                      <img src={preview} alt="Thumbnail Preview" className="w-full h-44 object-cover rounded-xl border border-bordercolor shadow-md" />
+                      <img src={preview} alt="Thumbnail Preview" className="w-full h-40 object-cover rounded-xl border border-bordercolor" />
                     </div>
                   )}
                 </div>
@@ -497,86 +463,86 @@ Requirements:
 
               {/* Text Input */}
               {inputMode === 'text' && (
-                <div className="bg-white/5 border border-bordercolor rounded-2xl p-5 space-y-2">
-                  <label className="text-xs font-semibold text-gray-300 block">Deskripsi Visual / Konsep Awal</label>
+                <div className="bg-cardbg border border-bordercolor rounded-2xl p-5 space-y-2">
+                  <label className="text-xs font-semibold text-gray-300">Konstruksi Teks / Deskripsi Awal</label>
                   <textarea
-                    rows="5"
+                    rows="4"
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
-                    placeholder="Tuliskan ide visual, adegan, suasana, atau deskripsi objek..."
-                    className="w-full bg-black/50 border border-bordercolor rounded-xl p-3.5 text-xs text-white focus:outline-none focus:border-brandblue resize-none"
+                    placeholder="Tuliskan ide awal atau skenario visual..."
+                    className="w-full bg-darkbg border border-bordercolor rounded-xl p-3 text-xs text-white focus:outline-none focus:border-accent"
                   ></textarea>
                 </div>
               )}
 
               {/* Controls Form */}
-              <div className="bg-white/5 border border-bordercolor rounded-2xl p-5 space-y-4">
+              <div className="bg-cardbg border border-bordercolor rounded-2xl p-5 space-y-4">
                 
                 {/* Image Aspect Ratio Selection */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-300 mb-1.5 flex items-center gap-1.5">
-                    <i className="fa-solid fa-crop-simple text-gray-400"></i>
-                    <span>Rasio Gambar (Aspect Ratio)</span>
+                    <i className="fa-solid fa-crop-simple text-accent"></i>
+                    <span>Ukuran Gambar (Aspect Ratio)</span>
                   </label>
                   <select
                     value={aspectRatio}
                     onChange={(e) => setAspectRatio(e.target.value)}
-                    className="w-full bg-black/50 border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brandblue"
+                    className="w-full bg-darkbg border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-accent"
                   >
-                    <option value="16:9" className="bg-[#0a0a0a]">16:9 — Landscape (YouTube / Banner)</option>
-                    <option value="9:16" className="bg-[#0a0a0a]">9:16 — Portrait (TikTok / Shorts / Reels)</option>
-                    <option value="1:1" className="bg-[#0a0a0a]">1:1 — Square (Feed Instagram)</option>
-                    <option value="4:5" className="bg-[#0a0a0a]">4:5 — Portrait (Social Media Post)</option>
-                    <option value="21:9" className="bg-[#0a0a0a]">21:9 — Ultrawide (Cinematic)</option>
-                    <option value="3:2" className="bg-[#0a0a0a]">3:2 — Standard Camera Photo</option>
+                    <option value="16:9">16:9 — Landscape (Youtube / Banner)</option>
+                    <option value="9:16">9:16 — Portrait (TikTok / Shorts / Reels)</option>
+                    <option value="1:1">1:1 — Square (Feed Instagram)</option>
+                    <option value="4:5">4:5 — Portrait (Post Social Media)</option>
+                    <option value="21:9">21:9 — Ultrawide (Cinematic Video)</option>
+                    <option value="3:2">3:2 — Standard DSLR Photo</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Instruksi Tambahan (Opsional)</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Instruksi Tambahan</label>
                   <input
                     type="text"
                     value={extraInstructions}
                     onChange={(e) => setExtraInstructions(e.target.value)}
-                    placeholder="Misal: pencahayaan cyber-punk, gaya photorealistic..."
-                    className="w-full bg-black/50 border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brandblue"
+                    placeholder="Fokus pada pencahayaan cinematic, gaya cyber-punk..."
+                    className="w-full bg-darkbg border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Negative Styling / Hindari (Opsional)</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Negative Styling</label>
                   <input
                     type="text"
                     value={negativeStyling}
                     onChange={(e) => setNegativeStyling(e.target.value)}
-                    placeholder="Misal: tanpa teks, hindari distorsi, tanpa blur..."
-                    className="w-full bg-black/50 border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brandblue"
+                    placeholder="Tanpa teks, hindari warna pudar, tanpa distorsi..."
+                    className="w-full bg-darkbg border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Preset Format Output AI</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Preset Target AI</label>
                   <select
                     value={promptStyle}
                     onChange={(e) => setPromptStyle(e.target.value)}
-                    className="w-full bg-black/50 border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brandblue"
+                    className="w-full bg-darkbg border border-bordercolor rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-accent"
                   >
-                    <option value="general" className="bg-[#0a0a0a]">General AI Prompt</option>
-                    <option value="midjourney" className="bg-[#0a0a0a]">Midjourney v6</option>
-                    <option value="flux" className="bg-[#0a0a0a]">Flux.1 AI</option>
-                    <option value="sdxl" className="bg-[#0a0a0a]">Stable Diffusion XL (SDXL)</option>
+                    <option value="general">General AI Prompt</option>
+                    <option value="midjourney">Midjourney v6</option>
+                    <option value="flux">Flux.1 AI</option>
+                    <option value="sdxl">Stable Diffusion XL (SDXL)</option>
                   </select>
                 </div>
 
                 <button
                   onClick={handleGenerate}
                   disabled={isLoading}
-                  className="w-full bg-brandblue hover:bg-sky-400 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 text-sm"
+                  className="w-full bg-accent hover:bg-accenthover disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-accent/20 flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
                     <>
                       <i className="fa-solid fa-spinner animate-spin"></i>
-                      <span>Menganalisis & Membuat Prompt...</span>
+                      <span>Menganalisis Visual...</span>
                     </>
                   ) : (
                     <>
@@ -589,7 +555,7 @@ Requirements:
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-xl text-xs flex items-center gap-2">
-                  <i className="fa-solid fa-circle-exclamation text-base shrink-0"></i>
+                  <i className="fa-solid fa-circle-exclamation text-base"></i>
                   <span>{error}</span>
                 </div>
               )}
@@ -600,30 +566,30 @@ Requirements:
             <div className="lg:col-span-6 space-y-5">
               
               {/* Output Result */}
-              <div className="bg-white/5 border border-bordercolor rounded-2xl p-5 space-y-3 min-h-[300px] flex flex-col">
+              <div className="bg-cardbg border border-bordercolor rounded-2xl p-5 space-y-3 min-h-[300px] flex flex-col">
                 <div className="flex items-center justify-between border-b border-bordercolor pb-3">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <i className="fa-solid fa-terminal text-brandblue"></i>
-                    Hasil Prompt AI
+                    <i className="fa-solid fa-terminal text-accent"></i>
+                    Prompt Hasil
                   </h3>
                   {promptResult && (
                     <button
                       onClick={() => copyPromptText(promptResult)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition flex items-center gap-1.5 ${copiedPrompt ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-brandblue/20 text-brandblue border-brandblue/30 hover:bg-brandblue/30'}`}
+                      className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition flex items-center gap-1.5 ${copiedPrompt ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/20'}`}
                     >
                       <i className={`fa-solid ${copiedPrompt ? 'fa-check' : 'fa-copy'}`}></i>
-                      <span>{copiedPrompt ? 'Tersalin!' : 'Salin Prompt'}</span>
+                      <span>{copiedPrompt ? 'Tersalin' : 'Salin Prompt'}</span>
                     </button>
                   )}
                 </div>
 
-                <div className="flex-1 bg-black/50 border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[360px] whitespace-pre-wrap select-all">
-                  {promptResult ? promptResult : <span className="text-gray-500 italic">Prompt yang dihasilkan akan muncul di sini...</span>}
+                <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px]">
+                  {promptResult ? promptResult : <span className="text-gray-500 italic">Menunggu Analisis... Prompt akan muncul di sini.</span>}
                 </div>
               </div>
 
               {/* History */}
-              <div className="bg-white/5 border border-bordercolor rounded-2xl p-5 space-y-3">
+              <div className="bg-cardbg border border-bordercolor rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between border-b border-bordercolor pb-3">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <i className="fa-solid fa-clock-rotate-left text-gray-400"></i>
@@ -641,18 +607,18 @@ Requirements:
 
                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                   {history.length === 0 ? (
-                    <p className="text-xs text-gray-500 italic text-center py-4">Belum ada riwayat prompt.</p>
+                    <p className="text-xs text-gray-500 italic text-center py-4">Riwayat prompt masih kosong.</p>
                   ) : (
                     history.map((item, idx) => (
-                      <div key={idx} className="bg-black/50 border border-bordercolor p-3 rounded-xl flex items-center justify-between gap-3 hover:border-brandblue/40 transition">
+                      <div key={idx} className="bg-darkbg border border-bordercolor p-3 rounded-xl flex items-center justify-between gap-3 hover:border-accent/40 transition">
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-gray-300 truncate font-mono">{item.prompt}</p>
                           <span className="text-[10px] text-gray-500">{item.time}</span>
                         </div>
                         <button
                           onClick={() => copyPromptText(item.prompt)}
-                          className="text-xs bg-white/10 p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/20 transition shrink-0"
-                          title="Salin Prompt"
+                          className="text-xs bg-cardbg p-2 rounded-lg text-gray-300 hover:text-white hover:bg-accent transition shrink-0"
+                          title="Salin"
                         >
                           <i className="fa-solid fa-copy"></i>
                         </button>
@@ -666,19 +632,19 @@ Requirements:
 
           </main>
 
-          {/* API KEY SETTINGS MODAL */}
+          {/* BLUE ACCENT SETTINGS MODAL */}
           {showApiKeyModal && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-              <div className="bg-[#0a0a0a] border border-bordercolor rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+              <div className="bg-[#0f172a] border border-accent/40 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
                 
                 {/* Modal Header */}
                 <div className="p-5 flex items-center justify-between border-b border-bordercolor">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-brandblue/10 border border-brandblue/30 rounded-xl flex items-center justify-center text-brandblue">
+                    <div className="w-10 h-10 bg-accent/10 border border-accent/30 rounded-xl flex items-center justify-center text-accent">
                       <i className="fa-solid fa-key text-lg"></i>
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-wider text-white uppercase">PENGATURAN API KEY</h3>
+                      <h3 className="text-sm font-bold tracking-wider text-accent uppercase">PENGATURAN API KEY</h3>
                       <p className="text-[11px] text-gray-400 tracking-wide uppercase">GOOGLE AI STUDIO</p>
                     </div>
                   </div>
@@ -694,21 +660,21 @@ Requirements:
                 <div className="p-5 space-y-5 overflow-y-auto max-h-[75vh]">
                   
                   {/* Info Box */}
-                  <div className="bg-white/5 border border-bordercolor rounded-xl p-3.5 text-xs text-gray-300 flex items-start space-x-3 leading-relaxed">
-                    <div className="w-5 h-5 rounded-full bg-brandblue/20 text-brandblue flex items-center justify-center shrink-0 mt-0.5">
-                      <i className="fa-solid fa-info text-xs"></i>
+                  <div className="bg-accent/5 border border-accent/20 rounded-xl p-3.5 text-xs text-gray-300 flex items-start space-x-3 leading-relaxed">
+                    <div className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 mt-0.5">
+                      <i className="fa-solid fa-exclamation text-xs"></i>
                     </div>
                     <div>
-                      Tambahkan satu atau beberapa API Key dari{' '}
+                      Tambahkan satu atau lebih API Key dari{' '}
                       <a
                         href="https://aistudio.google.com/app/apikey"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-brandblue font-semibold underline hover:text-sky-300 inline-flex items-center gap-1"
+                        className="text-accent font-semibold underline hover:text-blue-400 inline-flex items-center gap-1"
                       >
                         Google AI Studio <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                       </a>
-                      . Sistem otomatis berganti key jika salah satu limit.
+                      . Jika satu key rate-limited, sistem akan otomatis mencoba key berikutnya.
                     </div>
                   </div>
 
@@ -719,7 +685,7 @@ Requirements:
                     </h4>
 
                     {apiKeys.length === 0 ? (
-                      <div className="p-4 bg-black/50 border border-bordercolor rounded-xl text-center text-xs text-gray-500 italic">
+                      <div className="p-4 bg-[#080d1a] border border-bordercolor rounded-xl text-center text-xs text-gray-500 italic">
                         Belum ada API Key yang tersimpan.
                       </div>
                     ) : (
@@ -727,14 +693,14 @@ Requirements:
                         {apiKeys.map((keyItem, index) => (
                           <div
                             key={index}
-                            className="bg-white/5 border border-bordercolor hover:border-brandblue/30 rounded-xl p-3.5 flex items-center justify-between gap-3"
+                            className="bg-[#1e293b]/60 border border-bordercolor hover:border-bordercolor/80 rounded-xl p-3.5 flex items-center justify-between gap-3"
                           >
                             <div className="flex items-center space-x-3 min-w-0">
-                              <div className="w-7 h-7 bg-brandblue/10 border border-brandblue/30 rounded-lg flex items-center justify-center text-brandblue font-bold text-xs shrink-0">
+                              <div className="w-7 h-7 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-center text-accent font-bold text-xs shrink-0">
                                 {index + 1}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-white">Key #{index + 1}</p>
+                                <p className="text-xs font-bold text-white">Key {index + 1}</p>
                                 <p className="text-[11px] font-mono text-gray-400 truncate">
                                   {visibleKeysMap[index] ? keyItem : maskKeyStr(keyItem)}
                                 </p>
@@ -742,6 +708,7 @@ Requirements:
                             </div>
 
                             <div className="flex items-center space-x-2 shrink-0">
+                              {/* Copy */}
                               <button
                                 type="button"
                                 onClick={() => copyKeyToClipboard(keyItem, index)}
@@ -751,6 +718,7 @@ Requirements:
                                 <i className={`fa-solid ${copiedKeyIndex === index ? 'fa-check text-emerald-400' : 'fa-copy'}`}></i>
                               </button>
 
+                              {/* View / Mask */}
                               <button
                                 type="button"
                                 onClick={() => toggleKeyVisibility(index)}
@@ -760,6 +728,7 @@ Requirements:
                                 <i className={`fa-solid ${visibleKeysMap[index] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                               </button>
 
+                              {/* Delete */}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveKey(index)}
@@ -786,7 +755,7 @@ Requirements:
                           value={newKeyInput}
                           onChange={(e) => setNewKeyInput(e.target.value)}
                           placeholder="AIza... (paste API Key di sini)"
-                          className="w-full bg-black/50 border border-bordercolor focus:border-brandblue rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 outline-none pr-10 font-mono transition"
+                          className="w-full bg-[#080d1a] border border-bordercolor focus:border-accent rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 outline-none pr-10 font-mono transition"
                         />
                         <button
                           type="button"
@@ -800,7 +769,7 @@ Requirements:
                       <button
                         type="submit"
                         disabled={!newKeyInput.trim()}
-                        className="w-full bg-white/10 hover:bg-white/20 disabled:opacity-40 border border-bordercolor text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2"
+                        className="w-full bg-[#1e293b] hover:bg-accent disabled:opacity-40 border border-bordercolor text-gray-200 hover:text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2"
                       >
                         <i className="fa-solid fa-plus"></i>
                         <span>Tambah Key</span>
@@ -808,25 +777,25 @@ Requirements:
                     </form>
                   </div>
 
-                  {/* Free API Helper */}
+                  {/* Free API Text Helper */}
                   <div className="text-center text-xs text-gray-400 pt-1 border-t border-bordercolor/60">
                     Belum punya API key?{' '}
                     <a
                       href="https://aistudio.google.com/app/apikey"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-brandblue font-semibold underline hover:text-sky-300"
+                      className="text-accent font-semibold underline hover:text-blue-400"
                     >
-                      Dapatkan secara gratis di Google AI Studio
+                      Dapatkan gratis di Google AI Studio
                     </a>
                   </div>
 
                 </div>
 
-                {/* Modal Footer */}
-                <div className="bg-black/50 border-t border-bordercolor py-3 px-5 text-center">
+                {/* Modal Footer Bar */}
+                <div className="bg-[#080d1a] border-t border-bordercolor py-3 px-5 text-center">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    {apiKeys.length} Key Aktif • Model Auto-Fallback: Gemini 2.5 Flash / 1.5 Flash
+                    {apiKeys.length}/15 key • Model: gemini-3.6-flash / gemini-2.5-flash
                   </span>
                 </div>
 
@@ -835,8 +804,8 @@ Requirements:
           )}
 
           {/* Page Footer */}
-          <footer className="border-t border-bordercolor bg-white/5 py-4 text-center text-xs text-gray-500 mt-auto">
-            <p>&copy; {new Date().getFullYear()} Image to Prompt — Developed by <a href="https://www.buanamedia.my.id" target="_blank" rel="noopener noreferrer" className="text-brandblue hover:underline">Buana Media</a>.</p>
+          <footer className="border-t border-bordercolor bg-cardbg/50 py-4 text-center text-xs text-gray-500 mt-auto">
+            <p>&copy; {new Date().getFullYear()} Image to Prompt — Developed by <a href="https://www.buanamedia.my.id" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Buana Media</a>.</p>
           </footer>
 
         </div>
