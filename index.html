@@ -140,13 +140,6 @@
         setVisibleKeysMap(prev => ({ ...prev, [index]: !prev[index] }));
       };
 
-      // Copy Single Key
-      const copyKeyToClipboard = (keyStr, index) => {
-        executeCopy(keyStr);
-        setCopiedKeyIndex(index);
-        setTimeout(() => setCopiedKeyIndex(null), 1500);
-      };
-
       // Mask key helper (AQ.Ab8...3DSA)
       const maskKeyStr = (str) => {
         if (!str || str.length < 10) return '••••••••';
@@ -170,24 +163,24 @@
         reader.readAsDataURL(selectedFile);
       };
 
-      // Extract YouTube Thumbnail (Bypass CORS via Canvas rendering)
+      // Extract YouTube Thumbnail via Clean Canvas Rendering (Bypass CORS)
       const extractYtThumbnail = () => {
         setError(null);
         if (!ytUrl) return;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = ytUrl.match(regExp);
-        
         if (match && match[2].length === 11) {
           const videoId = match[2];
-          const imgUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+          const imgUrl = `https://i3.ytimg.com/vi/${videoId}/hqdefault.jpg`;
           
           const img = new Image();
           img.crossOrigin = 'Anonymous';
           img.src = imgUrl;
+
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             try {
@@ -197,16 +190,17 @@
               setPreview(imgUrl);
             }
           };
+
           img.onerror = () => {
-            setError('Gagal memuat thumbnail YouTube.');
+            setPreview(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
           };
         } else {
           setError('URL YouTube tidak valid.');
         }
       };
 
-      // Fungsi Salin Teks ke Clipboard yang Handal
-      const executeCopy = (text) => {
+      // Multi-scenario Copy Command
+      const executeCopyText = (text) => {
         if (!text) return;
         if (navigator.clipboard && window.isSecureContext) {
           navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
@@ -228,13 +222,19 @@
         try {
           document.execCommand('copy');
         } catch (err) {
-          console.error('Fallback copy gagal', err);
+          console.error('Copy failed', err);
         }
         document.body.removeChild(textArea);
       };
 
+      const copyKeyToClipboard = (keyStr, index) => {
+        executeCopyText(keyStr);
+        setCopiedKeyIndex(index);
+        setTimeout(() => setCopiedKeyIndex(null), 1500);
+      };
+
       const copyPromptText = (text) => {
-        executeCopy(text);
+        executeCopyText(text);
         setCopiedPrompt(true);
         setTimeout(() => setCopiedPrompt(false), 2000);
       };
@@ -273,6 +273,23 @@
             if (preview.startsWith('data:')) {
               base64Data = preview.split(',')[1];
               mimeType = file ? file.type : 'image/jpeg';
+            } else {
+              // Jika gambar thumbnail eksternal
+              const img = new Image();
+              img.crossOrigin = 'Anonymous';
+              img.src = preview;
+              await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+              });
+
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              const dataUrl = canvas.toDataURL('image/jpeg');
+              base64Data = dataUrl.split(',')[1];
             }
 
             parts.push({
@@ -299,10 +316,10 @@ Requirements:
 
           parts.push({ text: systemPrompt });
 
-          // Multi-Key Fallback Engine (MENGGUNAKAN MODEL RESMI TERBARU)
+          // Multi-Key Fallback Engine (Model Aktif Resmi Google)
           let finalResult = null;
           let lastErrorMessage = '';
-          const modelsToTry = ['gemini-3.6-flash', 'gemini-3.5-flash'];
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash-8b'];
 
           for (let k = 0; k < apiKeys.length; k++) {
             const currentKey = apiKeys[k];
@@ -624,7 +641,7 @@ Requirements:
                 </div>
 
                 <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px] whitespace-pre-wrap select-all">
-                  {promptResult ? promptResult : <span className="text-gray-500 italic">Menunggu Analisis... Prompt akan muncul di sini.</span>}
+                  {promptResult ? promptResult : <span className="text-gray-500 italic select-none">Menunggu Analisis... Prompt akan muncul di sini.</span>}
                 </div>
               </div>
 
@@ -835,7 +852,7 @@ Requirements:
                 {/* Modal Footer Bar */}
                 <div className="bg-[#080d1a] border-t border-bordercolor py-3 px-5 text-center">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    {apiKeys.length}/15 key • Model: gemini-3.6-flash / gemini-3.5-flash
+                    {apiKeys.length}/15 key • Model: gemini-2.5-flash
                   </span>
                 </div>
 
