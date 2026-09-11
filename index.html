@@ -142,7 +142,7 @@
 
       // Copy Single Key
       const copyKeyToClipboard = (keyStr, index) => {
-        copyTextToSystemClipboard(keyStr);
+        executeCopy(keyStr);
         setCopiedKeyIndex(index);
         setTimeout(() => setCopiedKeyIndex(null), 1500);
       };
@@ -170,32 +170,52 @@
         reader.readAsDataURL(selectedFile);
       };
 
-      // Extract YouTube Thumbnail
+      // Extract YouTube Thumbnail (Bypass CORS via Canvas rendering)
       const extractYtThumbnail = () => {
         setError(null);
         if (!ytUrl) return;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = ytUrl.match(regExp);
+        
         if (match && match[2].length === 11) {
-          setPreview(`https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`);
+          const videoId = match[2];
+          const imgUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+          
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.src = imgUrl;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            try {
+              const dataURL = canvas.toDataURL('image/jpeg');
+              setPreview(dataURL);
+            } catch (e) {
+              setPreview(imgUrl);
+            }
+          };
+          img.onerror = () => {
+            setError('Gagal memuat thumbnail YouTube.');
+          };
         } else {
           setError('URL YouTube tidak valid.');
         }
       };
 
-      // Universal Copy Helper
-      const copyTextToSystemClipboard = (text) => {
+      // Fungsi Salin Teks ke Clipboard yang Handal
+      const executeCopy = (text) => {
         if (!text) return;
         if (navigator.clipboard && window.isSecureContext) {
-          navigator.clipboard.writeText(text).catch(() => {
-            fallbackCopyText(text);
-          });
+          navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
         } else {
-          fallbackCopyText(text);
+          fallbackCopy(text);
         }
       };
 
-      const fallbackCopyText = (text) => {
+      const fallbackCopy = (text) => {
         const textArea = document.createElement("textarea");
         textArea.value = text;
         textArea.style.position = "fixed";
@@ -208,18 +228,18 @@
         try {
           document.execCommand('copy');
         } catch (err) {
-          console.error('Fallback copy failed', err);
+          console.error('Fallback copy gagal', err);
         }
         document.body.removeChild(textArea);
       };
 
       const copyPromptText = (text) => {
-        copyTextToSystemClipboard(text);
+        executeCopy(text);
         setCopiedPrompt(true);
         setTimeout(() => setCopiedPrompt(false), 2000);
       };
 
-      // Execute AI Prompt Generation with Key Auto-Rotation Fallback
+      // Execute AI Prompt Generation
       const handleGenerate = async () => {
         if (apiKeys.length === 0) {
           setShowApiKeyModal(true);
@@ -253,18 +273,6 @@
             if (preview.startsWith('data:')) {
               base64Data = preview.split(',')[1];
               mimeType = file ? file.type : 'image/jpeg';
-            } else {
-              // Safe CORS Proxy Fetching for YouTube Thumbnail
-              const targetUrl = `https://corsproxy.io/?${encodeURIComponent(preview)}`;
-              const resp = await fetch(targetUrl);
-              if (!resp.ok) throw new Error('Gagal mengunduh thumbnail YouTube.');
-              const blob = await resp.blob();
-              const reader = new FileReader();
-              base64Data = await new Promise((resolve) => {
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.readAsDataURL(blob);
-              });
-              mimeType = blob.type || 'image/jpeg';
             }
 
             parts.push({
@@ -291,10 +299,10 @@ Requirements:
 
           parts.push({ text: systemPrompt });
 
-          // Multi-Key Fallback Engine (Menggunakan model aktif resmi)
+          // Multi-Key Fallback Engine (MENGGUNAKAN MODEL RESMI TERBARU)
           let finalResult = null;
           let lastErrorMessage = '';
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+          const modelsToTry = ['gemini-3.6-flash', 'gemini-3.5-flash'];
 
           for (let k = 0; k < apiKeys.length; k++) {
             const currentKey = apiKeys[k];
@@ -616,7 +624,7 @@ Requirements:
                 </div>
 
                 <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px] whitespace-pre-wrap select-all">
-                  {promptResult ? promptResult : <span className="text-gray-500 italic select-none">Menunggu Analisis... Prompt akan muncul di sini.</span>}
+                  {promptResult ? promptResult : <span className="text-gray-500 italic">Menunggu Analisis... Prompt akan muncul di sini.</span>}
                 </div>
               </div>
 
@@ -827,7 +835,7 @@ Requirements:
                 {/* Modal Footer Bar */}
                 <div className="bg-[#080d1a] border-t border-bordercolor py-3 px-5 text-center">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    {apiKeys.length}/15 key • Model: gemini-2.5-flash / gemini-2.0-flash
+                    {apiKeys.length}/15 key • Model: gemini-3.6-flash / gemini-3.5-flash
                   </span>
                 </div>
 
