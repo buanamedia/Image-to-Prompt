@@ -141,10 +141,23 @@
       };
 
       // Copy Single Key
-      const copyKeyToClipboard = (keyStr, index) => {
-        navigator.clipboard.writeText(keyStr);
-        setCopiedKeyIndex(index);
-        setTimeout(() => setCopiedKeyIndex(null), 1500);
+      const copyKeyToClipboard = async (keyStr, index) => {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(keyStr);
+          } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = keyStr;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+          }
+          setCopiedKeyIndex(index);
+          setTimeout(() => setCopiedKeyIndex(null), 1500);
+        } catch (err) {
+          console.error("Gagal menyalin key:", err);
+        }
       };
 
       // Mask key helper (AQ.Ab8...3DSA)
@@ -177,7 +190,7 @@
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = ytUrl.match(regExp);
         if (match && match[2].length === 11) {
-          setPreview(`https://img.youtube.com/vi/${match[2]}/maxresdefault.jpg`);
+          setPreview(`https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`);
         } else {
           setError('URL YouTube tidak valid.');
         }
@@ -218,7 +231,8 @@
               base64Data = preview.split(',')[1];
               mimeType = file ? file.type : 'image/jpeg';
             } else {
-              const resp = await fetch(preview);
+              // Menangani gambar external (seperti YouTube Thumbnail)
+              const resp = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(preview)}`);
               const blob = await resp.blob();
               const reader = new FileReader();
               base64Data = await new Promise((resolve) => {
@@ -255,7 +269,7 @@ Requirements:
           // Multi-Key Fallback Engine
           let finalResult = null;
           let lastErrorMessage = '';
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash'];
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
 
           for (let k = 0; k < apiKeys.length; k++) {
             const currentKey = apiKeys[k];
@@ -307,10 +321,30 @@ Requirements:
         }
       };
 
-      const copyPromptText = (text) => {
-        navigator.clipboard.writeText(text);
-        setCopiedPrompt(true);
-        setTimeout(() => setCopiedPrompt(false), 2000);
+      // FUNGSI PERBAIKAN: Menyalin teks ke Clipboard dengan fallback
+      const copyPromptText = async (text) => {
+        if (!text) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            // Fallback untuk browser tua atau skenario non-HTTPS
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+          }
+          setCopiedPrompt(true);
+          setTimeout(() => setCopiedPrompt(false), 2000);
+        } catch (err) {
+          console.error("Gagal menyalin teks: ", err);
+          alert("Gagal menyalin otomatis. Silakan salin teks secara manual.");
+        }
       };
 
       return (
@@ -583,8 +617,8 @@ Requirements:
                   )}
                 </div>
 
-                <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px]">
-                  {promptResult ? promptResult : <span className="text-gray-500 italic">Menunggu Analisis... Prompt akan muncul di sini.</span>}
+                <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px] whitespace-pre-wrap">
+                  {promptResult ? promptResult : <span className="text-gray-500 italic font-sans">Menunggu Analisis... Prompt akan muncul di sini.</span>}
                 </div>
               </div>
 
@@ -795,7 +829,7 @@ Requirements:
                 {/* Modal Footer Bar */}
                 <div className="bg-[#080d1a] border-t border-bordercolor py-3 px-5 text-center">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    {apiKeys.length}/15 key • Model: gemini-3.6-flash / gemini-2.5-flash
+                    {apiKeys.length}/15 key • Model: gemini-2.5-flash
                   </span>
                 </div>
 
