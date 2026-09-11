@@ -140,30 +140,14 @@
         setVisibleKeysMap(prev => ({ ...prev, [index]: !prev[index] }));
       };
 
-      // Copy Single Key with fallback
-      const copyKeyToClipboard = async (keyStr, index) => {
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(keyStr);
-          } else {
-            const textArea = document.createElement("textarea");
-            textArea.value = keyStr;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textArea);
-          }
-          setCopiedKeyIndex(index);
-          setTimeout(() => setCopiedKeyIndex(null), 1500);
-        } catch (err) {
-          console.error("Gagal menyalin key:", err);
-        }
+      // Copy Single Key
+      const copyKeyToClipboard = (keyStr, index) => {
+        copyTextToSystemClipboard(keyStr);
+        setCopiedKeyIndex(index);
+        setTimeout(() => setCopiedKeyIndex(null), 1500);
       };
 
-      // Mask key helper
+      // Mask key helper (AQ.Ab8...3DSA)
       const maskKeyStr = (str) => {
         if (!str || str.length < 10) return '••••••••';
         return `${str.substring(0, 6)}...${str.substring(str.length - 4)}`;
@@ -197,6 +181,42 @@
         } else {
           setError('URL YouTube tidak valid.');
         }
+      };
+
+      // Universal Copy Helper
+      const copyTextToSystemClipboard = (text) => {
+        if (!text) return;
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).catch(() => {
+            fallbackCopyText(text);
+          });
+        } else {
+          fallbackCopyText(text);
+        }
+      };
+
+      const fallbackCopyText = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
+        document.body.removeChild(textArea);
+      };
+
+      const copyPromptText = (text) => {
+        copyTextToSystemClipboard(text);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 2000);
       };
 
       // Execute AI Prompt Generation with Key Auto-Rotation Fallback
@@ -234,7 +254,10 @@
               base64Data = preview.split(',')[1];
               mimeType = file ? file.type : 'image/jpeg';
             } else {
-              const resp = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(preview)}`);
+              // Safe CORS Proxy Fetching for YouTube Thumbnail
+              const targetUrl = `https://corsproxy.io/?${encodeURIComponent(preview)}`;
+              const resp = await fetch(targetUrl);
+              if (!resp.ok) throw new Error('Gagal mengunduh thumbnail YouTube.');
               const blob = await resp.blob();
               const reader = new FileReader();
               base64Data = await new Promise((resolve) => {
@@ -268,10 +291,10 @@ Requirements:
 
           parts.push({ text: systemPrompt });
 
-          // Multi-Key Fallback Engine (Menggunakan model aktif)
+          // Multi-Key Fallback Engine (Menggunakan model aktif resmi)
           let finalResult = null;
           let lastErrorMessage = '';
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-3.6-flash'];
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
           for (let k = 0; k < apiKeys.length; k++) {
             const currentKey = apiKeys[k];
@@ -320,31 +343,6 @@ Requirements:
           setError(err.message || 'Terjadi kesalahan saat memproses prompt.');
         } finally {
           setIsLoading(false);
-        }
-      };
-
-      // Salin Teks Prompt dengan Fallback
-      const copyPromptText = async (text) => {
-        if (!text) return;
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(text);
-          } else {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textArea);
-          }
-          setCopiedPrompt(true);
-          setTimeout(() => setCopiedPrompt(false), 2000);
-        } catch (err) {
-          console.error("Gagal menyalin teks: ", err);
-          alert("Gagal menyalin otomatis. Silakan salin teks secara manual.");
         }
       };
 
@@ -617,8 +615,8 @@ Requirements:
                   )}
                 </div>
 
-                <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px] whitespace-pre-wrap">
-                  {promptResult ? promptResult : <span className="text-gray-500 italic font-sans">Menunggu Analisis... Prompt akan muncul di sini.</span>}
+                <div className="flex-1 bg-darkbg border border-bordercolor rounded-xl p-4 font-mono text-xs text-gray-200 leading-relaxed overflow-y-auto max-h-[350px] whitespace-pre-wrap select-all">
+                  {promptResult ? promptResult : <span className="text-gray-500 italic select-none">Menunggu Analisis... Prompt akan muncul di sini.</span>}
                 </div>
               </div>
 
@@ -829,7 +827,7 @@ Requirements:
                 {/* Modal Footer Bar */}
                 <div className="bg-[#080d1a] border-t border-bordercolor py-3 px-5 text-center">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    {apiKeys.length}/15 key • Model: gemini-2.5-flash / gemini-3.6-flash
+                    {apiKeys.length}/15 key • Model: gemini-2.5-flash / gemini-2.0-flash
                   </span>
                 </div>
 
