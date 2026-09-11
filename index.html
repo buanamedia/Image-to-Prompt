@@ -140,7 +140,7 @@
         setVisibleKeysMap(prev => ({ ...prev, [index]: !prev[index] }));
       };
 
-      // Copy Single Key
+      // Copy Single Key with fallback
       const copyKeyToClipboard = async (keyStr, index) => {
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -148,7 +148,10 @@
           } else {
             const textArea = document.createElement("textarea");
             textArea.value = keyStr;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
             document.body.appendChild(textArea);
+            textArea.focus();
             textArea.select();
             document.execCommand("copy");
             document.body.removeChild(textArea);
@@ -160,7 +163,7 @@
         }
       };
 
-      // Mask key helper (AQ.Ab8...3DSA)
+      // Mask key helper
       const maskKeyStr = (str) => {
         if (!str || str.length < 10) return '••••••••';
         return `${str.substring(0, 6)}...${str.substring(str.length - 4)}`;
@@ -231,7 +234,6 @@
               base64Data = preview.split(',')[1];
               mimeType = file ? file.type : 'image/jpeg';
             } else {
-              // Menangani gambar external (seperti YouTube Thumbnail)
               const resp = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(preview)}`);
               const blob = await resp.blob();
               const reader = new FileReader();
@@ -266,10 +268,10 @@ Requirements:
 
           parts.push({ text: systemPrompt });
 
-          // Multi-Key Fallback Engine
+          // Multi-Key Fallback Engine (Menggunakan model aktif)
           let finalResult = null;
           let lastErrorMessage = '';
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-3.6-flash'];
 
           for (let k = 0; k < apiKeys.length; k++) {
             const currentKey = apiKeys[k];
@@ -321,14 +323,13 @@ Requirements:
         }
       };
 
-      // FUNGSI PERBAIKAN: Menyalin teks ke Clipboard dengan fallback
+      // Salin Teks Prompt dengan Fallback
       const copyPromptText = async (text) => {
         if (!text) return;
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(text);
           } else {
-            // Fallback untuk browser tua atau skenario non-HTTPS
             const textArea = document.createElement("textarea");
             textArea.value = text;
             textArea.style.position = "fixed";
@@ -352,7 +353,6 @@ Requirements:
           {/* Top Bar Navigation */}
           <header className="border-b border-bordercolor bg-cardbg/80 backdrop-blur px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30">
             <div className="flex items-center space-x-3">
-              {/* Logo Icon */}
               <div className="bg-accent/10 border border-accent/30 p-2.5 rounded-xl text-accent flex items-center justify-center shadow-sm">
                 <i className="fa-solid fa-wand-magic-sparkles text-xl"></i>
               </div>
@@ -829,7 +829,7 @@ Requirements:
                 {/* Modal Footer Bar */}
                 <div className="bg-[#080d1a] border-t border-bordercolor py-3 px-5 text-center">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    {apiKeys.length}/15 key • Model: gemini-2.5-flash
+                    {apiKeys.length}/15 key • Model: gemini-2.5-flash / gemini-3.6-flash
                   </span>
                 </div>
 
